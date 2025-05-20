@@ -10,7 +10,7 @@ TOKEN = '7915720272:AAG_hGluc5cY3wBcuievOhX0T70dY4yqqg0'
 def get_joke():
     with open('anek.txt', 'r', encoding='utf-8') as file:
         content = file.read()
-    jokes = [j.strip() for j in content.split('\n\n') if j.strip()]
+    jokes = [j.strip().replace('<|startoftext|>', '') for j in content.split('\n\n') if j.strip()]
     return random.choice(jokes)
 
 # Обработка /joke
