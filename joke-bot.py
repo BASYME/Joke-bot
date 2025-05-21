@@ -1,10 +1,13 @@
 import logging # отладка
 #import requests # запросы по API
-from telegram import Update # Обновления сообщений
-from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes # обработка команд
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup # Обновления сообщений
+from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, CallbackQueryHandler # обработка команд
 import random # рандом
+import os # TOKEN
 
-TOKEN = '7915720272:AAG_hGluc5cY3wBcuievOhX0T70dY4yqqg0'
+from dotenv import load_dotenv
+load_dotenv()
+TOKEN = os.getenv('TOKEN')
 
 # Получаем анекдот из файла anek.txt
 def get_joke():
