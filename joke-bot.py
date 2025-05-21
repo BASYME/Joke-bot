@@ -7,7 +7,7 @@ import os # TOKEN
 
 from dotenv import load_dotenv
 load_dotenv()
-TOKEN = os.getenv('TOKEN')
+TOKEN = os.getenv('BOT_TOKEN')
 
 # Получаем анекдот из файла anek.txt
 def get_joke():
@@ -18,8 +18,28 @@ def get_joke():
 
 # Обработка /joke
 async def joke_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    joke = get_joke()
-    await update.message.reply_text(joke)
+    keyboard = [[
+        InlineKeyboardButton("Анекдот!", callback_data='joke')   
+    ]]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    if update.message: 
+        await update.message.reply_text('Нажми кнопку, чтобы услышать анекдот!', reply_markup=reply_markup)
+    else:
+        await update.callback_query.message.reply_text('Нажми кнопку, чтобы услышать анекдот!', reply_markup=reply_markup)
+  # Обработка нажатия на кнопку "Анекдот!"
+
+async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    if query.data == 'joke':
+        joke = get_joke()
+        keyboard = [[
+            InlineKeyboardButton("Анекдот!", callback_data='joke')   
+        ]]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await query.message.reply_text(joke, reply_markup=reply_markup)
+
+
 
 # Обработка /start
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -32,6 +52,7 @@ if __name__ == '__main__':
     app = ApplicationBuilder().token(TOKEN).build()
     app.add_handler(CommandHandler('joke', joke_command))
     app.add_handler(CommandHandler('start', start_command))
+    app.add_handler(CallbackQueryHandler(button_callback))
     
     print('Бот запущен!')
     app.run_polling()
