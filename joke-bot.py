@@ -1,52 +1,23 @@
-import logging # отладка
-#import requests # запросы по API
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup # Обновления сообщений
-from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, CallbackQueryHandler # обработка команд
-import random # рандом
-import os # TOKEN
-import sqlite3 # база данных
-
-
+import sqlite3
+import os
+import random
+from telegram import Update, ReplyKeyboardMarkup, KeyboardButton
+from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
+from dotenv import load_dotenv
 import requests
 from bs4 import BeautifulSoup
 
-
-from dotenv import load_dotenv
 load_dotenv()
 TOKEN = os.getenv('BOT_TOKEN')
 
+# --- Клавиатура ---
+keyboard = [
+    [KeyboardButton("Анекдот!"), KeyboardButton("Свежий анекдот с сайта")],
+]
+reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 
-# Парсим анекдоты
-def get_fresh_jokes():
-    url = 'https://www.anekdot.ru/random/anekdot/'
-    response = requests.get(url)
-    response.encoding = 'utf-8'  # Установка правильной кодировки
-    soup = BeautifulSoup(response.text, 'html.parser')
-    
-    jokes_divs = soup.find_all('div', class_='text')
-    jokes = [div.get_text(strip=True) for div in jokes_divs]
-    if jokes:
-        return random.choice(jokes)
-    else:
-        return "Не удалось получить свежие анекдоты. Попробуйте позже."
-
-async def fresh_joke_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    joke = get_fresh_jokes()
-    await update.message.reply_text(joke)
-
-
-
-
-
-
-# Получаем анекдот из файла anek.txt
+# --- Получить анекдот из файла ---
 def get_joke():
-
-    #with open('anek.txt', 'r', encoding='utf-8') as file:
-       # content = file.read()
-    #jokes = [j.strip().replace('<|startoftext|>', '') for j in content.split('\n\n') if j.strip()]
-    #return random.choice(jokes)
-
     conn = sqlite3.connect('jokes.db')
     c = conn.cursor()
     c.execute('SELECT COUNT(*) FROM jokes')
@@ -65,46 +36,37 @@ def get_joke():
 
 
 
+# --- Получить анекдот с сайта ---
+def get_fresh_joke():
+    try:
+        url = 'https://www.anekdot.ru/random/anekdot/'
+        response = requests.get(url)
+        response.encoding = 'utf-8'
+        soup = BeautifulSoup(response.text, 'html.parser')
+        jokes_divs = soup.find_all('div', class_='text')
+        jokes = [div.get_text(strip=True) for div in jokes_divs]
+        return random.choice(jokes) if jokes else "Не удалось получить свежий анекдот."
+    except Exception:
+        return "Ошибка при получении анекдота с сайта."
 
-
-# Обработка /joke
-async def joke_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    keyboard = [[
-        InlineKeyboardButton("Анекдот!", callback_data='joke')   
-    ]]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    if update.message: 
-        await update.message.reply_text('Нажми кнопку, чтобы услышать анекдот!', reply_markup=reply_markup)
-    else:
-        await update.callback_query.message.reply_text('Нажми кнопку, чтобы услышать анекдот!', reply_markup=reply_markup)
-  # Обработка нажатия на кнопку "Анекдот!"
-
-async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-    if query.data == 'joke':
-        joke = get_joke()
-        keyboard = [[
-            InlineKeyboardButton("Анекдот!", callback_data='joke')   
-        ]]
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        await query.message.reply_text(joke, reply_markup=reply_markup)
-
-
-
-# Обработка /start
+# --- /start ---
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text('Привет! Я бот, который рассказывает анекдоты. Напиши /joke, чтобы услышать анекдот!')
+    await update.message.reply_text(
+        "Привет! Я бот-анекдотчик. Жми на кнопки внизу 👇",
+        reply_markup=reply_markup
+    )
 
-# Запуск бота
+# --- Обработка сообщений ---
+async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    text = update.message.text.strip()
+    if text == "Анекдот из файла":
+        await update.message.reply_text(get_old_joke(), reply_markup=reply_markup)
+    elif text == "Свежий анекдот с сайта":
+        await update.message.reply_text(get_fresh_joke(), reply_markup=reply_markup)
+
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.INFO)
-
     app = ApplicationBuilder().token(TOKEN).build()
-    app.add_handler(CommandHandler('joke', joke_command))
     app.add_handler(CommandHandler('start', start_command))
-    app.add_handler(CallbackQueryHandler(button_callback))
-    app.add_handler(CommandHandler('fresh', fresh_joke_command))
-    
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     print('Бот запущен!')
     app.run_polling()
