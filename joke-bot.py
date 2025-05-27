@@ -6,9 +6,38 @@ import random # рандом
 import os # TOKEN
 import sqlite3 # база данных
 
+
+import requests
+from bs4 import BeautifulSoup
+
+
 from dotenv import load_dotenv
 load_dotenv()
 TOKEN = os.getenv('BOT_TOKEN')
+
+
+# Парсим анекдоты
+def get_fresh_jokes():
+    url = 'https://www.anekdot.ru/random/anekdot/'
+    response = requests.get(url)
+    response.encoding = 'utf-8'  # Установка правильной кодировки
+    soup = BeautifulSoup(response.text, 'html.parser')
+    
+    jokes_divs = soup.find_all('div', class_='text')
+    jokes = [div.get_text(strip=True) for div in jokes_divs]
+    if jokes:
+        return random.choice(jokes)
+    else:
+        return "Не удалось получить свежие анекдоты. Попробуйте позже."
+
+async def fresh_joke_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    joke = get_fresh_jokes()
+    await update.message.reply_text(joke)
+
+
+
+
+
 
 # Получаем анекдот из файла anek.txt
 def get_joke():
@@ -75,6 +104,7 @@ if __name__ == '__main__':
     app.add_handler(CommandHandler('joke', joke_command))
     app.add_handler(CommandHandler('start', start_command))
     app.add_handler(CallbackQueryHandler(button_callback))
+    app.add_handler(CommandHandler('fresh', fresh_joke_command))
     
     print('Бот запущен!')
     app.run_polling()
