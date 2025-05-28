@@ -59,8 +59,8 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # --- Обработка сообщений ---
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text.strip()
-    if text == "Анекдот из файла":
-        await update.message.reply_text(get_old_joke(), reply_markup=reply_markup)
+    if text == "Анекдот!":
+        await update.message.reply_text(get_joke(), reply_markup=reply_markup)
     elif text == "Свежий анекдот с сайта":
         await update.message.reply_text(get_fresh_joke(), reply_markup=reply_markup)
 
